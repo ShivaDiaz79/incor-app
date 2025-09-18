@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Modal } from "@/components/ui/modal";
 import Label from "@/components/form/Label";
 import Input from "@/components/form/input/InputField";
 import Button from "@/components/ui/button/Button";
 import RHFSelect from "../form/react-hook-form/RHFSelect";
+import { usersService } from "@/features/users/service";
+
+import { ROLE_LABEL } from "@/constants/roles";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const phonePattern = /^[0-9+\-\s()]{6,20}$/;
 
 type FormValues = {
@@ -18,6 +20,8 @@ type FormValues = {
 	email: string;
 	phone: string;
 	roleId: string;
+	ci: string;
+	password?: string;
 };
 
 export default function RegisterUserModal({
@@ -37,6 +41,16 @@ export default function RegisterUserModal({
 	const [createdName, setCreatedName] = useState<string | null>(null);
 	const [selectKey, setSelectKey] = useState<number>(0);
 	const closeTimerRef = useRef<number | null>(null);
+	const [showPwd, setShowPwd] = useState(false);
+
+	const roleOptions = useMemo(
+		() =>
+			Object.entries(ROLE_LABEL).map(([value, label]) => ({
+				value,
+				label: String(label),
+			})),
+		[]
+	);
 
 	const {
 		register,
@@ -51,6 +65,8 @@ export default function RegisterUserModal({
 			email: "",
 			phone: "",
 			roleId: "",
+			ci: "",
+			password: "",
 		},
 		mode: "onTouched",
 	});
@@ -66,6 +82,7 @@ export default function RegisterUserModal({
 		setCreatedName(null);
 		reset();
 		setSelectKey((k) => k + 1);
+		setShowPwd(false);
 	}
 
 	function handleClose() {
@@ -76,13 +93,26 @@ export default function RegisterUserModal({
 	async function onSubmit(values: FormValues) {
 		setServerError(null);
 		setCreatedName(null);
+
 		try {
-			console.log("[Users] submit:", values);
+			const payload = {
+				email: values.email,
+				name: values.name,
+				lastName: values.lastName,
+				phone: values.phone,
+				roleId: values.roleId,
+				ci: values.ci,
+				isActive: true,
+				...(values.password ? { password: values.password } : {}),
+			};
+
+			await usersService.create(payload);
+
 			if (onSuccess) onSuccess(values);
 			setCreatedName(`${values.name} ${values.lastName}`.trim());
-		} catch (err: any) {
+		} catch (err: unknown) {
 			const message =
-				err?.message?.replace("Firebase:", "").trim() ||
+				(err as Error)?.message?.replace("Firebase:", "").trim() ||
 				"No se pudo crear el usuario.";
 			setServerError(message);
 		}
@@ -115,12 +145,7 @@ export default function RegisterUserModal({
 					</div>
 
 					<div className="flex items-center justify-end gap-2">
-						<Button
-							variant="outline"
-							onClick={() => {
-								hardReset();
-							}}
-						>
+						<Button variant="outline" onClick={hardReset}>
 							Crear otro
 						</Button>
 						<Button onClick={handleClose}>Cerrar</Button>
@@ -203,6 +228,21 @@ export default function RegisterUserModal({
 						</div>
 
 						<div>
+							<Label htmlFor="ci">CI</Label>
+							<Input
+								id="ci"
+								placeholder="12345678"
+								autoComplete="off"
+								error={!!errors.ci}
+								hint={errors.ci?.message}
+								{...register("ci", {
+									required: "Requerido",
+									minLength: { value: 5, message: "Mínimo 5 caracteres" },
+								})}
+							/>
+						</div>
+
+						<div>
 							<Label htmlFor="roleId">Rol</Label>
 							<Controller
 								control={control}
@@ -214,11 +254,7 @@ export default function RegisterUserModal({
 								render={({ field }) => (
 									<div key={selectKey}>
 										<RHFSelect
-											options={[
-												{ label: "Administrador", value: "admin" },
-												{ label: "Editor", value: "editor" },
-												{ label: "Colaborador", value: "contributor" },
-											]}
+											options={roleOptions}
 											error={!!errors.roleId}
 											hint={errors.roleId?.message}
 											placeholder="Selecciona un rol…"
@@ -233,6 +269,40 @@ export default function RegisterUserModal({
 									</div>
 								)}
 							/>
+						</div>
+
+						<div>
+							<Label htmlFor="password">Contraseña (opcional)</Label>
+							<div className="relative">
+								<Input
+									id="password"
+									type={showPwd ? "text" : "password"}
+									placeholder="Mínimo 8 caracteres"
+									autoComplete="new-password"
+									error={!!errors.password}
+									hint={errors.password?.message}
+									{...register("password", {
+										minLength: {
+											value: 8,
+											message: "Debe tener al menos 8 caracteres",
+										},
+									})}
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPwd((s) => !s)}
+									className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+									aria-label={
+										showPwd ? "Ocultar contraseña" : "Mostrar contraseña"
+									}
+								>
+									{showPwd ? "Ocultar" : "Mostrar"}
+								</button>
+							</div>
+							<p className="mt-1.5 text-xs text-gray-500">
+								Déjalo en blanco si prefieres que el usuario defina su
+								contraseña luego.
+							</p>
 						</div>
 
 						<div className="mt-6 flex items-center justify-end gap-2">

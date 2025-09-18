@@ -78,13 +78,13 @@ export const Modal: React.FC<ModalProps> = ({
 		<AnimatePresence>
 			{isOpen && (
 				<div
-					className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
+					className="fixed inset-0 z-[2147483647] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
 					role="dialog"
 					aria-modal="true"
 				>
 					{!isFullscreen && (
 						<motion.div
-							className="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[24px]"
+							className="fixed inset-0 z-[1] h-full w-full bg-gray-400/50 backdrop-blur-[24px]"
 							initial="hidden"
 							animate="visible"
 							exit="exit"
@@ -98,7 +98,7 @@ export const Modal: React.FC<ModalProps> = ({
 
 					<motion.div
 						ref={modalRef}
-						className={`${contentClasses} ${className || ""}`}
+						className={`${contentClasses} z-[2] ${className || ""}`}
 						onClick={(e) => e.stopPropagation()}
 						initial="hidden"
 						animate="visible"
