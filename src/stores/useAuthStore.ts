@@ -32,10 +32,19 @@ type AuthActions = {
 		password: string;
 		remember?: boolean;
 	}) => Promise<void>;
-	logout: () => void;
+	logout: () => Promise<void>;
 	setFromAuthResponse: (data: AuthResponse["data"], remember: boolean) => void;
 	clearError: () => void;
 };
+
+function clearPersistSnapshots() {
+	if (typeof window !== "undefined") {
+		try {
+			sessionStorage.removeItem(PERSIST_KEY);
+			localStorage.removeItem(PERSIST_KEY);
+		} catch {}
+	}
+}
 
 export const useAuthStore = create<AuthState & AuthActions>()(
 	persist(
@@ -71,13 +80,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 				set({ loading: true, error: null });
 				try {
 					const res = await authService.login({ email, password, remember });
-
-					console.log(res);
-
 					const data = res.data;
-					const { user } = data;
-
-					set((s) => s);
 					useAuthStore.getState().setFromAuthResponse(data, !!remember);
 				} catch (e: unknown) {
 					set({
@@ -88,13 +91,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 				}
 			},
 
-			logout: () => {
-				set({ user: null, remember: false, loading: false, error: null });
-				if (typeof window !== "undefined") {
-					try {
-						sessionStorage.removeItem(PERSIST_KEY);
-						localStorage.removeItem(PERSIST_KEY);
-					} catch {}
+			logout: async () => {
+				set({ loading: true, error: null });
+				try {
+					await authService.logout();
+				} catch (e) {
+				} finally {
+					set({ user: null, remember: false, loading: false, error: null });
+					clearPersistSnapshots();
 				}
 			},
 		}),

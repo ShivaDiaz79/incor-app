@@ -2,7 +2,6 @@ import React from "react";
 
 type Option = { value: string; label: string };
 
-// Quitamos onChange/value/defaultValue de las props nativas del <select>
 type NativeProps = Omit<
 	React.SelectHTMLAttributes<HTMLSelectElement>,
 	"onChange" | "value" | "defaultValue"
@@ -11,9 +10,9 @@ type NativeProps = Omit<
 export interface SelectProps extends NativeProps {
 	options: Option[];
 	placeholder?: string;
-	value?: string; // controlado
-	defaultValue?: string; // no controlado (si no pasas value)
-	onChange: (value: string) => void; // devolvemos solo el string
+	value?: string;
+	defaultValue?: string;
+	onChange: (value: string) => void;
 	className?: string;
 	error?: boolean;
 	hint?: string;
