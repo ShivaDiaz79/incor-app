@@ -9,7 +9,6 @@ function requireEnv() {
 	return API_URL;
 }
 
-/** Helper para leer body/text o json de la API upstream sin romper si no es JSON */
 async function readUpstream(up: Response) {
 	const ct = up.headers.get("content-type") || "";
 	if (ct.includes("application/json")) {
@@ -33,7 +32,6 @@ export async function POST() {
 		const store = await cookies();
 
 		const accessToken = store.get("accessToken")?.value;
-		const refreshToken = store.get("refreshToken")?.value;
 
 		let upstreamStatus = 200;
 		let upstreamBody: unknown = { message: "Sesión finalizada localmente" };
@@ -47,54 +45,41 @@ export async function POST() {
 				},
 			});
 			upstreamStatus = upstream.status;
-			upstreamBody = await readUpstream(upstream);
+
+			upstreamBody =
+				upstreamStatus === 204 ? null : await readUpstream(upstream);
 		}
 
-		const res = NextResponse.json(upstreamBody, { status: upstreamStatus });
+		const res =
+			upstreamStatus === 204
+				? new NextResponse(null, { status: 204 })
+				: NextResponse.json(upstreamBody ?? { ok: true }, {
+						status: upstreamStatus,
+				  });
 
-		const expired = new Date(0).toUTCString();
-		res.cookies.set({
-			name: "accessToken",
-			value: "",
+		const commonCookie = {
 			path: "/",
 			httpOnly: true,
-			sameSite: "lax",
+			sameSite: "lax" as const,
 			secure: process.env.NODE_ENV === "production",
 			expires: new Date(0),
-		});
-		res.cookies.set({
-			name: "refreshToken",
-			value: "",
-			path: "/",
-			httpOnly: true,
-			sameSite: "lax",
-			secure: process.env.NODE_ENV === "production",
-			expires: new Date(0),
-		});
+		};
+		res.cookies.set({ name: "accessToken", value: "", ...commonCookie });
+		res.cookies.set({ name: "refreshToken", value: "", ...commonCookie });
 
 		return res;
 	} catch (err) {
 		console.error("Logout route error:", err);
-
 		const res = NextResponse.json({ error: "Error interno" }, { status: 500 });
-		res.cookies.set({
-			name: "accessToken",
-			value: "",
+		const commonCookie = {
 			path: "/",
 			httpOnly: true,
-			sameSite: "lax",
+			sameSite: "lax" as const,
 			secure: process.env.NODE_ENV === "production",
 			expires: new Date(0),
-		});
-		res.cookies.set({
-			name: "refreshToken",
-			value: "",
-			path: "/",
-			httpOnly: true,
-			sameSite: "lax",
-			secure: process.env.NODE_ENV === "production",
-			expires: new Date(0),
-		});
+		};
+		res.cookies.set({ name: "accessToken", value: "", ...commonCookie });
+		res.cookies.set({ name: "refreshToken", value: "", ...commonCookie });
 		return res;
 	}
 }

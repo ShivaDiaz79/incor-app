@@ -30,7 +30,7 @@ const RHFFileInput: React.FC<RHFFileInputProps> = ({
 							className={className}
 							onChange={(e) => {
 								const files = e.target.files;
-								field.onChange(files && files.length ? files[0] : null); // un solo archivo (tu FileInput no expone 'multiple')
+								field.onChange(files && files.length ? files[0] : null);
 							}}
 						/>
 						{field.value &&

@@ -61,15 +61,12 @@ export async function middleware(req: NextRequest) {
 }
 
 function logoutRedirect(url: URL) {
-	const res = NextResponse.redirect(new URL("/login", url.origin));
+	const res = NextResponse.redirect(new URL("/signin", url.origin));
 	res.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
 	res.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
 	return res;
 }
 
-/**
- * Decodifica el JWT (sin verificar firma) y ve si expira en <= threshold.
- */
 function isExpiring(token: string, thresholdSeconds = 0) {
 	try {
 		const [, payload] = token.split(".");

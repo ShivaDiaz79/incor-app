@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -8,12 +8,22 @@ import { useRouter } from "next/navigation";
 
 export default function UserDropdown() {
 	const [isOpen, setIsOpen] = useState(false);
+	const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+	const btnRef = useRef<HTMLButtonElement>(null);
+
 	const logout = useAuthStore((s) => s.logout);
 	const router = useRouter();
 	const user = useAuthStore((s) => s.user);
 
+	function updateAnchorRect() {
+		setAnchorRect(btnRef.current?.getBoundingClientRect() ?? null);
+	}
+
 	function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
 		e.stopPropagation();
+		if (!isOpen) {
+			updateAnchorRect(); // calcular ancla al abrir
+		}
 		setIsOpen((prev) => !prev);
 	}
 
@@ -21,11 +31,26 @@ export default function UserDropdown() {
 		setIsOpen(false);
 	}
 
+	// Recalcula posición al hacer scroll o resize mientras está abierto
+	useEffect(() => {
+		if (!isOpen) return;
+		const onScrollOrResize = () => updateAnchorRect();
+		window.addEventListener("scroll", onScrollOrResize, true);
+		window.addEventListener("resize", onScrollOrResize);
+		return () => {
+			window.removeEventListener("scroll", onScrollOrResize, true);
+			window.removeEventListener("resize", onScrollOrResize);
+		};
+	}, [isOpen]);
+
 	return (
 		<div className="relative">
 			<button
+				ref={btnRef}
 				onClick={toggleDropdown}
 				className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
+				aria-haspopup="menu"
+				aria-expanded={isOpen}
 			>
 				<span className="mr-3 overflow-hidden rounded-full h-11 w-11">
 					<Image
@@ -63,7 +88,9 @@ export default function UserDropdown() {
 			<Dropdown
 				isOpen={isOpen}
 				onClose={closeDropdown}
-				className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
+				anchorRect={anchorRect}
+				// OJO: sin "absolute/right/mt"; Dropdown ya usa position: fixed
+				className="w-[260px] rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
 			>
 				<div>
 					<span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
@@ -87,9 +114,7 @@ export default function UserDropdown() {
 								width="24"
 								height="24"
 								viewBox="0 0 24 24"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							></svg>
+							/>
 							Editar perfil
 						</DropdownItem>
 					</li>
@@ -105,9 +130,7 @@ export default function UserDropdown() {
 								width="24"
 								height="24"
 								viewBox="0 0 24 24"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							></svg>
+							/>
 							Configuración de cuenta
 						</DropdownItem>
 					</li>
@@ -123,9 +146,7 @@ export default function UserDropdown() {
 								width="24"
 								height="24"
 								viewBox="0 0 24 24"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							></svg>
+							/>
 							Soporte
 						</DropdownItem>
 					</li>
@@ -144,9 +165,7 @@ export default function UserDropdown() {
 						width="24"
 						height="24"
 						viewBox="0 0 24 24"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-					></svg>
+					/>
 					Cerrar sesión
 				</button>
 			</Dropdown>

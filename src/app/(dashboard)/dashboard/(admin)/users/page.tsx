@@ -1,4 +1,5 @@
 import RegisterUserButton from "@/components/auth/RegisterUserButton";
+import UsersList from "@/components/users/UsersList";
 
 export default function UsersPage() {
 	return (
@@ -7,6 +8,7 @@ export default function UsersPage() {
 				<h1 className="text-xl font-semibold text-slate-900">Usuarios</h1>
 				<RegisterUserButton />
 			</div>
+			<UsersList />
 		</div>
 	);
 }
