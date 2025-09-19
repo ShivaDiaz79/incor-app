@@ -36,8 +36,6 @@ export async function POST(req: Request) {
 			body: JSON.stringify({ email, password }),
 		});
 
-		console.log("Login response status:", res.status);
-
 		if (!res.ok) {
 			let errBody: unknown;
 			try {

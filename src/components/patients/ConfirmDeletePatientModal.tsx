@@ -1,12 +1,10 @@
 "use client";
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
-import Label from "@/components/form/Label";
-import Input from "@/components/form/input/InputField";
 import Button from "@/components/ui/button/Button";
 import { usersService } from "@/features/users/service";
 
-export default function ConfirmDeleteUserModal({
+export default function ConfirmDeletePatientModal({
 	isOpen,
 	onClose,
 	userId,
@@ -19,16 +17,11 @@ export default function ConfirmDeleteUserModal({
 	userName?: string | null;
 	onDeleted?: () => void;
 }) {
-	const [confirmText, setConfirmText] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [done, setDone] = useState(false);
 	const [loading, setLoading] = useState(false);
 
 	async function onConfirm() {
-		if (confirmText !== "ELIMINAR") {
-			setError('Escribe "ELIMINAR" para confirmar');
-			return;
-		}
 		try {
 			setLoading(true);
 			setError(null);
@@ -43,7 +36,6 @@ export default function ConfirmDeleteUserModal({
 	}
 
 	function handleClose() {
-		setConfirmText("");
 		setError(null);
 		setDone(false);
 		setLoading(false);
@@ -59,38 +51,32 @@ export default function ConfirmDeleteUserModal({
 			<h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white/90">
 				Eliminar usuario
 			</h3>
-			<p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
-				Esta acción es permanente para{" "}
-				<span className="font-semibold">{userName || userId}</span>.
-			</p>
 
 			{done ? (
-				<div className="space-y-6">
-					<div className="rounded-lg border border-success-500/40 bg-success-50 px-4 py-3 text-sm dark:border-success-500/30 dark:bg-success-500/15">
-						✅ Usuario eliminado.
-					</div>
+				<>
+					<p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
+						✅ El usuario{" "}
+						<span className="font-semibold">{userName || userId}</span> fue
+						eliminado correctamente.
+					</p>
 					<div className="flex justify-end">
 						<Button onClick={handleClose}>Cerrar</Button>
 					</div>
-				</div>
+				</>
 			) : (
 				<>
+					<p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
+						¿Seguro que deseas{" "}
+						<span className="font-semibold text-rose-600">eliminar</span> al
+						usuario <span className="font-semibold">{userName || userId}</span>?
+						Esta acción no se puede deshacer.
+					</p>
+
 					{error && (
 						<div className="mb-4 rounded-lg border border-error-500/40 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-400">
 							{error}
 						</div>
 					)}
-
-					<div className="space-y-3">
-						<Label htmlFor="confirm">Para confirmar, escribe ELIMINAR</Label>
-						<Input
-							id="confirm"
-							placeholder="ELIMINAR"
-							value={confirmText}
-							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-							error={!!error && confirmText !== "ELIMINAR"}
-						/>
-					</div>
 
 					<div className="mt-6 flex items-center justify-end gap-2">
 						<Button variant="outline" onClick={handleClose}>

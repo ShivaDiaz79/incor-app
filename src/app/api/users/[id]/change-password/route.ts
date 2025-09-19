@@ -28,14 +28,13 @@ async function passThrough(upstream: Response) {
 			return { parsed: json, isJson: true as const };
 		}
 		const text = await upstream.text();
-
 		try {
 			const maybe = JSON.parse(text);
 			return { parsed: maybe, isJson: true as const };
 		} catch {
 			return { parsed: { raw: text }, isJson: false as const };
 		}
-	} catch (e) {
+	} catch {
 		return {
 			parsed: { error: "No se pudo leer respuesta" },
 			isJson: true as const,
@@ -44,26 +43,6 @@ async function passThrough(upstream: Response) {
 }
 
 type Params = { id: string };
-
-export async function GET(req: Request, ctx: { params: Promise<Params> }) {
-	try {
-		const { id } = await ctx.params;
-		const API_URL = requireEnv();
-		const auth = await requireAuth();
-		if (auth instanceof NextResponse) return auth;
-
-		const upstream = await fetch(`${API_URL}/users/${id}`, {
-			headers: { Authorization: `Bearer ${auth}` },
-		});
-
-		const { parsed } = await passThrough(upstream);
-
-		return NextResponse.json(parsed, { status: upstream.status });
-	} catch (err) {
-		console.error("Users/:id GET error:", err);
-		return NextResponse.json({ error: "Error interno" }, { status: 500 });
-	}
-}
 
 export async function PATCH(req: Request, ctx: { params: Promise<Params> }) {
 	try {
@@ -74,7 +53,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<Params> }) {
 
 		const payload = await req.json();
 
-		const upstream = await fetch(`${API_URL}/users/${id}`, {
+		const upstream = await fetch(`${API_URL}/users/${id}/change-password`, {
 			method: "PATCH",
 			headers: {
 				"Content-Type": "application/json",
@@ -87,28 +66,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<Params> }) {
 
 		return NextResponse.json(parsed, { status: upstream.status });
 	} catch (err) {
-		console.error("Users/:id PATCH error:", err);
-		return NextResponse.json({ error: "Error interno" }, { status: 500 });
-	}
-}
-
-export async function DELETE(req: Request, ctx: { params: Promise<Params> }) {
-	try {
-		const { id } = await ctx.params;
-		const API_URL = requireEnv();
-		const auth = await requireAuth();
-		if (auth instanceof NextResponse) return auth;
-
-		const upstream = await fetch(`${API_URL}/users/${id}`, {
-			method: "DELETE",
-			headers: { Authorization: `Bearer ${auth}` },
-		});
-
-		const { parsed } = await passThrough(upstream);
-
-		return NextResponse.json(parsed, { status: upstream.status });
-	} catch (err) {
-		console.error("Users/:id DELETE error:", err);
+		console.error("Users/:id/change-password PATCH error:", err);
 		return NextResponse.json({ error: "Error interno" }, { status: 500 });
 	}
 }

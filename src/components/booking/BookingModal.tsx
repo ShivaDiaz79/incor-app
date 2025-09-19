@@ -75,7 +75,6 @@ export default function BookingModal({
 		setServerError(null);
 		setCreatedCode(null);
 		try {
-			console.log("[booking] submit local:", values);
 			if (onSubmitLocal) onSubmitLocal(values);
 			setCreatedCode(values.code || "RESERVA");
 		} catch (err: unknown) {

@@ -6,6 +6,36 @@ import {
 	User,
 } from "./types";
 
+export type UserStats = {
+	total: number;
+	active: number;
+	inactive: number;
+	byRole?: Record<string, number>;
+};
+
+function unwrapStats(raw: any): any {
+	if (!raw) return raw;
+	if (raw?.data?.data && typeof raw.data.data === "object")
+		return raw.data.data;
+	if (raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data))
+		return raw.data;
+	return raw;
+}
+
+function normalizeUserStats(raw: any): UserStats {
+	const box = unwrapStats(raw) ?? {};
+	const total = Number(box.total ?? box.count ?? 0);
+	const active = Number(box.active ?? 0);
+	const inactive =
+		box.inactive != null ? Number(box.inactive) : Math.max(0, total - active);
+	const byRole =
+		box.byRole && typeof box.byRole === "object"
+			? (box.byRole as Record<string, number>)
+			: undefined;
+
+	return { total, active, inactive, byRole };
+}
+
 type MaybeISODate = string | FirestoreTS | Date | null | undefined;
 
 function toDate(d: MaybeISODate): Date | null | undefined {
@@ -272,5 +302,164 @@ export const usersService = {
 		}
 
 		return { success: true };
+	},
+
+	async activate(id: string, body?: Record<string, unknown>): Promise<User> {
+		const hasBody = body && Object.keys(body).length > 0;
+		const res = await fetch(`/api/users/${id}/activate`, {
+			method: "PATCH",
+			headers: {
+				...(hasBody ? { "Content-Type": "application/json" } : {}),
+			},
+			...(hasBody ? { body: JSON.stringify(body) } : {}),
+		});
+		const contentType = res.headers.get("content-type") || "";
+		const raw = contentType.includes("application/json")
+			? await res.json()
+			: await res.text();
+
+		if (!res.ok) {
+			const msg =
+				typeof raw === "string"
+					? raw
+					: raw?.error || "Error al activar usuario";
+			throw new Error(msg);
+		}
+
+		const maybe = (raw?.item ?? raw?.data ?? raw) as unknown;
+		if (isApiUser(maybe)) return mapApiUserToUser(maybe);
+		throw new Error("Respuesta inesperada al activar usuario");
+	},
+
+	async bulkDeactivate(payload: { ids: string[]; reason?: string }): Promise<{
+		success: boolean;
+		affected?: number;
+		details?: any;
+		message?: string;
+	}> {
+		const res = await fetch(`/api/users/bulk-deactivate`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		const contentType = res.headers.get("content-type") || "";
+		const raw = contentType.includes("application/json")
+			? await res.json()
+			: await res.text();
+
+		if (!res.ok) {
+			const msg =
+				typeof raw === "string"
+					? raw
+					: raw?.error || "Error al desactivar usuarios";
+			throw new Error(msg);
+		}
+
+		if (typeof raw === "string") {
+			return { success: true, message: raw };
+		}
+
+		const affected =
+			raw?.affected ??
+			raw?.count ??
+			raw?.modifiedCount ??
+			raw?.updated ??
+			raw?.deactivated;
+
+		const success = typeof raw?.success === "boolean" ? raw.success : true;
+
+		return {
+			success,
+			affected: typeof affected === "number" ? affected : undefined,
+			details: raw,
+			message: raw?.message,
+		};
+	},
+
+	async changePassword(
+		id: string,
+		payload: { password: string; oldPassword?: string }
+	): Promise<{ success: boolean; message?: string }> {
+		const res = await fetch(`/api/users/${id}/change-password`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+		const contentType = res.headers.get("content-type") || "";
+		const raw = contentType.includes("application/json")
+			? await res.json()
+			: await res.text();
+
+		if (!res.ok) {
+			const msg =
+				typeof raw === "string"
+					? raw
+					: raw?.error || "Error al cambiar contraseña";
+			throw new Error(msg);
+		}
+
+		if (typeof raw === "string") return { success: true, message: raw };
+		if (raw && typeof raw === "object") {
+			const success = typeof raw.success === "boolean" ? raw.success : true;
+			const message = raw.message ?? "Contraseña actualizada";
+			return { success, message };
+		}
+
+		return { success: true };
+	},
+
+	async getStats(): Promise<UserStats> {
+		const res = await fetch(`/api/users/stats`, {
+			headers: { "Content-Type": "application/json" },
+		});
+
+		const contentType = res.headers.get("content-type") || "";
+		const raw = contentType.includes("application/json")
+			? await res.json()
+			: await res.text();
+
+		if (!res.ok) {
+			const msg =
+				typeof raw === "string"
+					? raw
+					: raw?.error || "Error al obtener estadísticas de usuarios";
+			throw new Error(msg);
+		}
+
+		return normalizeUserStats(raw);
+	},
+
+	async getRecent(limit = 5): Promise<User[]> {
+		const qs = new URLSearchParams();
+		if (limit) qs.set("limit", String(limit));
+
+		const res = await fetch(
+			`/api/users/recent${qs.toString() ? `?${qs}` : ""}`,
+			{
+				headers: { "Content-Type": "application/json" },
+			}
+		);
+
+		const contentType = res.headers.get("content-type") || "";
+		const raw = contentType.includes("application/json")
+			? await res.json()
+			: await res.text();
+
+		if (!res.ok) {
+			const msg =
+				typeof raw === "string"
+					? raw
+					: raw?.error || "Error al obtener usuarios recientes";
+			throw new Error(msg);
+		}
+
+		const list =
+			(Array.isArray(raw) && raw) ||
+			(Array.isArray(raw?.data) && raw.data) ||
+			(Array.isArray(raw?.items) && raw.items) ||
+			(Array.isArray(raw?.data?.data) && raw.data.data) ||
+			[];
+
+		return list.map(mapApiUserToUser);
 	},
 };

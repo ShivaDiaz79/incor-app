@@ -22,7 +22,6 @@ export async function POST(req: Request) {
 
 		const raw = await req.json();
 		const parsed = bodySchema.safeParse(raw);
-		console.log(parsed);
 		if (!parsed.success) {
 			return NextResponse.json(
 				{ error: "Datos inválidos", details: parsed.error.format() },
@@ -50,8 +49,6 @@ export async function POST(req: Request) {
 		const body = contentType.includes("application/json")
 			? await res.json()
 			: await res.text();
-
-		console.log(body);
 
 		return NextResponse.json(body, { status: res.status });
 	} catch (err) {

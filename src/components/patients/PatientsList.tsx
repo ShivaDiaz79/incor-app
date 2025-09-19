@@ -8,76 +8,64 @@ import {
 	TableRow,
 	TableCell,
 } from "@/components/ui/table";
-import { usersService } from "@/features/users/service";
-import type { User } from "@/features/users/types";
 import Button from "@/components/ui/button/Button";
-import ConfirmDeleteUserModal from "./ConfirmDeleteUserModal";
-import EditUserModal from "./EditUserModal";
-import ChangePasswordModal from "./ChangePasswordModal";
-
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 
-function fullName(u: User) {
-	const name = [u.name, u.lastName].filter(Boolean).join(" ").trim();
-	return name || u.email || "Sin nombre";
+import { patientsService } from "@/features/patients/service";
+import type { Patient } from "@/features/patients/types";
+import EditPatientModal from "./EditPatientModal";
+
+function fullName(p: Patient) {
+	const name = [p.name, p.lastName].filter(Boolean).join(" ").trim();
+	return name || p.email || "Sin nombre";
 }
 
-function initials(u: User) {
-	const name = fullName(u);
+function initials(p: Patient) {
+	const name = fullName(p);
 	const parts = name.split(" ").filter(Boolean);
 	const ini = (parts[0]?.[0] || "") + (parts[1]?.[0] || "");
-	return ini.toUpperCase() || "U";
+	return ini.toUpperCase() || "P";
 }
 
-function formatDate(d?: Date | null) {
+function formatDate(d?: Date | null, withDay = true) {
 	if (!d) return "—";
 	try {
 		return d.toLocaleDateString("es-ES", {
 			year: "numeric",
 			month: "short",
-			day: "2-digit",
+			day: withDay ? "2-digit" : undefined,
 		});
 	} catch {
 		return "—";
 	}
 }
 
-const ROLE_TINT: Record<string, string> = {
-	project_manager: "bg-indigo-50 text-indigo-700 ring-indigo-200",
-	sales: "bg-amber-50 text-amber-700 ring-amber-200",
-	technical: "bg-sky-50 text-sky-700 ring-sky-200",
-	admin_finance: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-	legal: "bg-rose-50 text-rose-700 ring-rose-200",
-	client: "bg-slate-50 text-slate-700 ring-slate-200",
-};
-
-export default function UsersList({
+export default function PatientsList({
 	pageSize = 10,
 	className = "",
-	onEdit,
+	onEdit, // si se pasa, tiene prioridad sobre el modal interno
 }: {
 	pageSize?: number;
 	className?: string;
-	onEdit?: (userId: string) => void;
+	onEdit?: (patientId: string) => void;
 }) {
+	// pagination/data
 	const [page, setPage] = useState(1);
-	const [items, setItems] = useState<User[]>([]);
+	const [items, setItems] = useState<Patient[]>([]);
 	const [total, setTotal] = useState<number | undefined>(undefined);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	// search
 	const [search, setSearch] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");
 
-	const [delUser, setDelUser] = useState<User | null>(null);
-	const [editingId, setEditingId] = useState<string | null>(null);
-	const [pwdUser, setPwdUser] = useState<User | null>(null);
-
+	// per-row action loading
 	const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+	// dropdown state (portal + fixed anchor)
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 	const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-
 	const toggleMenu = (id: string, el: HTMLElement | null) => {
 		if (openMenuId === id) {
 			setOpenMenuId(null);
@@ -92,6 +80,10 @@ export default function UsersList({
 		setAnchorRect(null);
 	};
 
+	// modal de edición integrado
+	const [editingId, setEditingId] = useState<string | null>(null);
+
+	// debounce search
 	useEffect(() => {
 		const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
 		return () => clearTimeout(t);
@@ -101,7 +93,7 @@ export default function UsersList({
 		setLoading(true);
 		setError(null);
 		try {
-			const res = await usersService.getAll({
+			const res = await patientsService.getAll({
 				page: p,
 				limit: pageSize,
 				search: debouncedSearch || undefined,
@@ -109,7 +101,7 @@ export default function UsersList({
 			setItems(res.items);
 			setTotal(res.total);
 		} catch (e: unknown) {
-			setError((e as Error)?.message || "Error al obtener usuarios");
+			setError((e as Error)?.message || "Error al obtener pacientes");
 			setItems([]);
 		} finally {
 			setLoading(false);
@@ -118,10 +110,12 @@ export default function UsersList({
 
 	useEffect(() => {
 		fetchPage(1);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [debouncedSearch, pageSize]);
 
 	useEffect(() => {
 		fetchPage(page);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [page]);
 
 	const totalPages = useMemo(() => {
@@ -141,27 +135,60 @@ export default function UsersList({
 		if (page > 1) setPage((p) => p - 1);
 	}
 
-	async function handleActivate(u: User) {
+	// --- actions ---
+	async function handleActivate(pat: Patient) {
 		setError(null);
-		setActionLoadingId(u.id);
+		setActionLoadingId(pat.id);
 		try {
-			await usersService.activate(u.id);
+			if (!confirm(`¿Activar al paciente "${fullName(pat)}"?`)) return;
+			await patientsService.activate(pat.id);
 			await fetchPage(page);
 		} catch (e: unknown) {
-			setError((e as Error)?.message ?? "No se pudo activar el usuario");
+			setError((e as Error)?.message ?? "No se pudo activar el paciente");
 		} finally {
 			setActionLoadingId(null);
 		}
 	}
 
-	async function handleDeactivate(u: User) {
+	async function handleDeactivate(pat: Patient) {
 		setError(null);
-		setActionLoadingId(u.id);
+		setActionLoadingId(pat.id);
 		try {
-			await usersService.bulkDeactivate({ ids: [u.id] });
+			if (!confirm(`¿Desactivar al paciente "${fullName(pat)}"?`)) return;
+			await patientsService.remove(pat.id); // en tu API DELETE = desactivar
 			await fetchPage(page);
 		} catch (e: unknown) {
-			setError((e as Error)?.message ?? "No se pudo desactivar el usuario");
+			setError((e as Error)?.message ?? "No se pudo desactivar el paciente");
+		} finally {
+			setActionLoadingId(null);
+		}
+	}
+
+	async function handleAddHistory(pat: Patient) {
+		const entry = window.prompt(
+			"Nuevo antecedente médico para " + fullName(pat)
+		);
+		if (!entry) return;
+		setActionLoadingId(pat.id);
+		try {
+			await patientsService.addMedicalHistory(pat.id, entry);
+			await fetchPage(page);
+		} catch (e: unknown) {
+			setError((e as Error)?.message ?? "No se pudo agregar el antecedente");
+		} finally {
+			setActionLoadingId(null);
+		}
+	}
+
+	async function handleAddAllergy(pat: Patient) {
+		const entry = window.prompt("Nueva alergia para " + fullName(pat));
+		if (!entry) return;
+		setActionLoadingId(pat.id);
+		try {
+			await patientsService.addAllergy(pat.id, entry);
+			await fetchPage(page);
+		} catch (e: unknown) {
+			setError((e as Error)?.message ?? "No se pudo agregar la alergia");
 		} finally {
 			setActionLoadingId(null);
 		}
@@ -172,13 +199,13 @@ export default function UsersList({
 			className={`rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 dark:bg-gray-900 ${className}`}
 		>
 			<div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<h2 className="text-base font-semibold text-slate-900">Usuarios</h2>
+				<h2 className="text-base font-semibold text-slate-900">Pacientes</h2>
 				<div className="flex w-full items-center gap-2 sm:w-auto">
 					<div className="relative w-full sm:w-72">
 						<input
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
-							placeholder="Buscar por nombre, email o rol…"
+							placeholder="Buscar por nombre, email, CI…"
 							className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
 						/>
 						<svg
@@ -206,19 +233,25 @@ export default function UsersList({
 								isHeader
 								className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
 							>
-								Usuario
+								Paciente
 							</TableCell>
 							<TableCell
 								isHeader
 								className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
 							>
-								Email
+								Contacto
 							</TableCell>
 							<TableCell
 								isHeader
 								className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
 							>
-								Rol
+								CI
+							</TableCell>
+							<TableCell
+								isHeader
+								className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
+							>
+								Nacimiento
 							</TableCell>
 							<TableCell
 								isHeader
@@ -255,7 +288,10 @@ export default function UsersList({
 										<div className="h-4 w-56 rounded bg-slate-200" />
 									</TableCell>
 									<TableCell className="px-4 py-4">
-										<div className="h-5 w-40 rounded-full bg-slate-200" />
+										<div className="h-4 w-24 rounded bg-slate-200" />
+									</TableCell>
+									<TableCell className="px-4 py-4">
+										<div className="h-4 w-24 rounded bg-slate-200" />
 									</TableCell>
 									<TableCell className="px-4 py-4">
 										<div className="h-4 w-14 rounded bg-slate-200" />
@@ -272,71 +308,78 @@ export default function UsersList({
 							<TableRow>
 								<TableCell
 									className="px-4 py-6 text-sm text-slate-500"
-									colSpan={6}
+									colSpan={7}
 								>
-									No hay usuarios para mostrar.
+									No hay pacientes para mostrar.
 								</TableCell>
 							</TableRow>
 						) : (
-							items.map((u) => {
-								const rowBusy = actionLoadingId === u.id;
+							items.map((p) => {
+								const rowBusy = actionLoadingId === p.id;
 								return (
-									<TableRow key={u.id} className="hover:bg-slate-50">
+									<TableRow key={p.id} className="hover:bg-slate-50">
 										<TableCell className="px-4 py-3">
 											<div className="flex items-center gap-3">
 												<div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-													{initials(u)}
+													{initials(p)}
 												</div>
 												<div className="leading-tight">
 													<div className="text-sm font-medium text-slate-900">
-														{fullName(u)}
+														{fullName(p)}
+													</div>
+													<div className="text-xs text-slate-500">
+														{p.age ? `${p.age} años` : ""}
 													</div>
 												</div>
 											</div>
 										</TableCell>
+
 										<TableCell className="px-4 py-3">
 											<div className="text-sm text-slate-700">
-												{u.email || "—"}
+												{p.phone || "—"}
+												{p.email ? ` · ${p.email}` : ""}
 											</div>
 										</TableCell>
+
 										<TableCell className="px-4 py-3">
-											<span
-												className={`inline-flex max-w-[22rem] items-center truncate rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-													(u.roleId && ROLE_TINT[u.roleId]) ||
-													"bg-slate-50 text-slate-700 ring-slate-200"
-												}`}
-												title={u.roleId || ""}
-											>
-												{u.roleId || "—"}
-											</span>
+											<div className="text-sm text-slate-700">
+												{p.ci || "—"}
+											</div>
 										</TableCell>
+
+										<TableCell className="px-4 py-3">
+											<div className="text-sm text-slate-700">
+												{formatDate(p.dateOfBirth, false)}
+											</div>
+										</TableCell>
+
 										<TableCell className="px-4 py-3">
 											<span
 												className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-													u.isActive
+													p.isActive
 														? "bg-emerald-50 text-emerald-700 ring-emerald-200"
 														: "bg-slate-50 text-slate-600 ring-slate-200"
 												}`}
 											>
-												{u.isActive ? "Sí" : "No"}
+												{p.isActive ? "Sí" : "No"}
 											</span>
 										</TableCell>
+
 										<TableCell className="px-4 py-3">
 											<div className="text-sm text-slate-700">
-												{formatDate(u.createdAt)}
+												{formatDate(p.createdAt)}
 											</div>
 										</TableCell>
 
-										{/* Acciones con Dropdown (portal + fixed) */}
 										<TableCell className="px-4 py-3">
 											<div className="relative inline-block text-left">
 												<button
 													type="button"
 													className="dropdown-toggle inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-													onClick={(e) => toggleMenu(u.id, e.currentTarget)}
+													onClick={(e) => toggleMenu(p.id, e.currentTarget)}
 													disabled={rowBusy}
 													aria-haspopup="true"
-													aria-expanded={openMenuId === u.id}
+													aria-expanded={openMenuId === p.id}
 													aria-label="Abrir menú de acciones"
 												>
 													<svg
@@ -352,17 +395,17 @@ export default function UsersList({
 												</button>
 
 												<Dropdown
-													isOpen={openMenuId === u.id}
+													isOpen={openMenuId === p.id}
 													onClose={closeMenu}
 													anchorRect={anchorRect}
-													className="min-w-48"
+													className="min-w-56"
 												>
 													<div className="py-1 text-sm">
 														<button
 															className="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-white/10"
 															onClick={() => {
 																closeMenu();
-																onEdit ? onEdit(u.id) : setEditingId(u.id);
+																onEdit ? onEdit(p.id) : setEditingId(p.id); // <-- abre modal interno si no te pasan onEdit
 															}}
 															disabled={rowBusy}
 														>
@@ -371,21 +414,32 @@ export default function UsersList({
 
 														<button
 															className="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-white/10"
-															onClick={() => {
+															onClick={async () => {
 																closeMenu();
-																setPwdUser(u);
+																await handleAddHistory(p);
 															}}
 															disabled={rowBusy}
 														>
-															🔑 Cambiar contraseña
+															🩺 Agregar antecedente
 														</button>
 
-														{u.isActive ? (
+														<button
+															className="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-white/10"
+															onClick={async () => {
+																closeMenu();
+																await handleAddAllergy(p);
+															}}
+															disabled={rowBusy}
+														>
+															🌿 Agregar alergia
+														</button>
+
+														{p.isActive ? (
 															<button
 																className="block w-full px-4 py-2 text-left text-rose-700 hover:bg-rose-50"
 																onClick={async () => {
 																	closeMenu();
-																	await handleDeactivate(u);
+																	await handleDeactivate(p);
 																}}
 																disabled={rowBusy}
 															>
@@ -396,26 +450,13 @@ export default function UsersList({
 																className="block w-full px-4 py-2 text-left text-emerald-700 hover:bg-emerald-50"
 																onClick={async () => {
 																	closeMenu();
-																	await handleActivate(u);
+																	await handleActivate(p);
 																}}
 																disabled={rowBusy}
 															>
 																✅ Activar
 															</button>
 														)}
-
-														<div className="my-1 h-px bg-slate-100" />
-
-														<button
-															className="block w-full px-4 py-2 text-left text-white bg-rose-600 hover:bg-rose-500 rounded-b-xl"
-															onClick={() => {
-																closeMenu();
-																setDelUser(u);
-															}}
-															disabled={rowBusy}
-														>
-															🗑️ Eliminar
-														</button>
 													</div>
 												</Dropdown>
 											</div>
@@ -440,7 +481,7 @@ export default function UsersList({
 					{typeof total === "number" && (
 						<>
 							{" "}
-							• {total} usuario{total === 1 ? "" : "s"}
+							• {total} paciente{total === 1 ? "" : "s"}
 						</>
 					)}
 				</div>
@@ -464,38 +505,16 @@ export default function UsersList({
 				</div>
 			</div>
 
-			{delUser && (
-				<ConfirmDeleteUserModal
-					isOpen={!!delUser}
-					onClose={() => setDelUser(null)}
-					userId={delUser.id}
-					userName={fullName(delUser)}
-					onDeleted={async () => {
-						await fetchPage(page);
-						setDelUser(null);
-					}}
-				/>
-			)}
-
+			{/* Modal de edición integrado */}
 			{editingId && (
-				<EditUserModal
+				<EditPatientModal
 					isOpen={!!editingId}
-					userId={editingId}
+					patientId={editingId}
 					onClose={() => setEditingId(null)}
 					onSaved={async () => {
 						await fetchPage(page);
 						setEditingId(null);
 					}}
-				/>
-			)}
-
-			{pwdUser && (
-				<ChangePasswordModal
-					isOpen={!!pwdUser}
-					onClose={() => setPwdUser(null)}
-					userId={pwdUser.id}
-					userName={fullName(pwdUser)}
-					email={pwdUser.email || undefined}
 				/>
 			)}
 		</div>
