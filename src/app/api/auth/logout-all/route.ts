@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 			);
 		}
 
-		const res = await fetch(`${API_URL}/api/v1/auth/logout`, {
+		const res = await fetch(`${API_URL}/auth/logout-all`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",

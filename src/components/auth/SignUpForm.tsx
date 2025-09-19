@@ -1,71 +1,82 @@
 "use client";
 
-import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
+import Button from "@/components/ui/button/Button";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { authService } from "@/features/auth/service";
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[0-9+\-\s()]{6,20}$/;
 
 export default function SignUpForm() {
 	const [showPassword, setShowPassword] = useState(false);
-	const [isChecked, setIsChecked] = useState(false);
-	const [loading, setLoading] = useState<
-		"none" | "email" | "google" | "facebook"
-	>("none");
-	const [error, setError] = useState<string | null>(null);
+
+	const [name, setName] = useState("");
+	const [lastName, setLastName] = useState("");
+
+	const [email, setEmail] = useState("");
+	const [phone, setPhone] = useState("");
+	const [ci, setCi] = useState("");
+	const [password, setPassword] = useState("");
+
+	const [loading, setLoading] = useState(false);
+	const [localError, setLocalError] = useState("");
+
+	const router = useRouter();
 
 	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
-		setError(null);
-		setLoading("email");
+		setLocalError("");
 
-		const formData = new FormData(e.currentTarget);
-		const fname = (formData.get("fname") as string) || "";
-		const lname = (formData.get("lname") as string) || "";
-		const email = (formData.get("email") as string) || "";
-		const password = (formData.get("password") as string) || "";
-
-		if (!isChecked) {
-			setError("Debes aceptar los términos y condiciones.");
-			setLoading("none");
+		if (!name.trim() || !lastName.trim()) {
+			setLocalError("Por favor, completa tu nombre y apellido.");
+			return;
+		}
+		if (!emailPattern.test(email)) {
+			setLocalError("Ingresa un correo válido.");
+			return;
+		}
+		if (!phonePattern.test(phone)) {
+			setLocalError("Ingresa un teléfono válido.");
+			return;
+		}
+		if (!ci.trim() || ci.trim().length < 5) {
+			setLocalError("Ingresa un documento de identidad válido.");
+			return;
+		}
+		if (password.length < 8) {
+			setLocalError("La contraseña debe tener al menos 8 caracteres.");
 			return;
 		}
 
 		try {
-		} catch (err: any) {
-			setError(err?.message || "Error al crear la cuenta");
+			setLoading(true);
+			await authService.register({
+				email: email.trim(),
+				name: name.trim(),
+				lastName: lastName.trim(),
+				phone: phone.trim(),
+				ci: ci.trim(),
+				password,
+			});
+
+			router.replace("/signin");
+		} catch (err: unknown) {
+			const msg =
+				(err as Error)?.message?.replace("Firebase:", "").trim() ||
+				"No se pudo completar el registro.";
+			setLocalError(msg);
 		} finally {
-			setLoading("none");
+			setLoading(false);
 		}
 	}
-
-	async function handleGoogle() {
-		setError(null);
-		setLoading("google");
-		try {
-		} catch (err: any) {
-			setError(err?.message || "No se pudo iniciar con Google");
-		} finally {
-			setLoading("none");
-		}
-	}
-
-	async function handleFacebook() {
-		setError(null);
-		setLoading("facebook");
-		try {
-		} catch (err: any) {
-			setError(err?.message || "No se pudo iniciar con Facebook");
-		} finally {
-			setLoading("none");
-		}
-	}
-
-	const isBusy = loading !== "none";
 
 	return (
-		<div className="flex flex-col flex-1 lg:w-1/2 w-full overflow-y-auto no-scrollbar">
+		<div className="flex flex-col flex-1 lg:w-1/2 w-full">
 			<div className="w-full max-w-md sm:pt-10 mx-auto mb-5">
 				<Link
 					href="/"
@@ -83,34 +94,34 @@ export default function SignUpForm() {
 							Crear cuenta
 						</h1>
 						<p className="text-sm text-gray-500 dark:text-gray-400">
-							Ingresa tu correo y contraseña para registrarte.
+							Completa los datos para registrar tu cuenta.
 						</p>
 					</div>
 
 					<form onSubmit={handleSubmit}>
-						<div className="space-y-5">
-							<div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+						<div className="space-y-4">
+							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div>
 									<Label>
-										Nombre<span className="text-error-500">*</span>
+										Nombres <span className="text-error-500">*</span>
 									</Label>
 									<Input
-										type="text"
-										id="fname"
-										name="fname"
-										placeholder="Ingresa tu nombre"
+										placeholder="Tu nombre"
+										value={name}
+										onChange={(e) => setName(e.target.value)}
+										autoComplete="given-name"
 										required
 									/>
 								</div>
 								<div>
 									<Label>
-										Apellido<span className="text-error-500">*</span>
+										Apellidos <span className="text-error-500">*</span>
 									</Label>
 									<Input
-										type="text"
-										id="lname"
-										name="lname"
-										placeholder="Ingresa tu apellido"
+										placeholder="Tus apellidos"
+										value={lastName}
+										onChange={(e) => setLastName(e.target.value)}
+										autoComplete="family-name"
 										required
 									/>
 								</div>
@@ -118,35 +129,62 @@ export default function SignUpForm() {
 
 							<div>
 								<Label>
-									Correo electrónico<span className="text-error-500">*</span>
+									Correo electrónico <span className="text-error-500">*</span>
 								</Label>
 								<Input
+									placeholder="correo@dominio.com"
 									type="email"
-									id="email"
-									name="email"
-									placeholder="Ingresa tu correo"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									autoComplete="email"
 									required
 								/>
 							</div>
 
 							<div>
 								<Label>
-									Contraseña<span className="text-error-500">*</span>
+									Teléfono <span className="text-error-500">*</span>
+								</Label>
+								<Input
+									placeholder="Número de teléfono"
+									type="tel"
+									value={phone}
+									onChange={(e) => setPhone(e.target.value)}
+									autoComplete="tel"
+									required
+								/>
+							</div>
+
+							<div>
+								<Label>
+									Documento de identidad{" "}
+									<span className="text-error-500">*</span>
+								</Label>
+								<Input
+									placeholder="Documento de identidad"
+									value={ci}
+									onChange={(e) => setCi(e.target.value)}
+									autoComplete="off"
+									required
+								/>
+							</div>
+
+							<div>
+								<Label>
+									Contraseña <span className="text-error-500">*</span>
 								</Label>
 								<div className="relative">
 									<Input
-										placeholder="Ingresa tu contraseña"
 										type={showPassword ? "text" : "password"}
-										id="password"
-										name="password"
+										placeholder="Crea una contraseña"
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										autoComplete="new-password"
 										required
 									/>
 									<span
 										onClick={() => setShowPassword(!showPassword)}
 										className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-										aria-label={
-											showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-										}
 									>
 										{showPassword ? (
 											<EyeIcon className="fill-gray-500 dark:fill-gray-400" />
@@ -155,65 +193,24 @@ export default function SignUpForm() {
 										)}
 									</span>
 								</div>
-							</div>
-
-							<div className="flex items-center gap-3">
-								<Checkbox
-									className="w-5 h-5"
-									checked={isChecked}
-									onChange={setIsChecked}
-								/>
-								<p className="inline-block font-normal text-gray-500 dark:text-gray-400">
-									Al crear una cuenta aceptas los{" "}
-									<span className="text-gray-800 dark:text-white/90">
-										Términos y Condiciones
-									</span>
-									, y nuestra{" "}
-									<span className="text-gray-800 dark:text-white">
-										Política de Privacidad
-									</span>
-									.
+								<p className="mt-1.5 text-xs text-gray-500">
+									Mínimo 8 caracteres. Evita usar contraseñas obvias.
 								</p>
 							</div>
 
-							{error && <p className="text-sm text-red-500">{error}</p>}
+							{localError && (
+								<p className="text-sm text-center text-red-500">{localError}</p>
+							)}
 
-							<div className="space-y-3">
-								<button
+							<div>
+								<Button
+									className="w-full"
+									size="sm"
+									disabled={loading}
 									type="submit"
-									disabled={isBusy}
-									className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600 disabled:opacity-50"
 								>
-									{loading === "email" ? "Creando..." : "Crear cuenta"}
-								</button>
-
-								<div className="relative flex items-center justify-center">
-									<span className="h-px w-full bg-gray-200 dark:bg-gray-800" />
-									<span className="absolute bg-white dark:bg-gray-900 px-3 text-xs text-gray-500">
-										o continuar con
-									</span>
-								</div>
-
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-									<button
-										type="button"
-										onClick={handleGoogle}
-										disabled={isBusy}
-										className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 disabled:opacity-50"
-									>
-										{loading === "google" ? "Abriendo Google..." : "Google"}
-									</button>
-									<button
-										type="button"
-										onClick={handleFacebook}
-										disabled={isBusy}
-										className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 disabled:opacity-50"
-									>
-										{loading === "facebook"
-											? "Abriendo Facebook..."
-											: "Facebook"}
-									</button>
-								</div>
+									{loading ? "Registrando..." : "Crear cuenta"}
+								</Button>
 							</div>
 						</div>
 					</form>

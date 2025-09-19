@@ -27,7 +27,6 @@ export default function UserDropdown() {
 				onClick={toggleDropdown}
 				className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
 			>
-				<pre>{JSON.stringify(user, null, 2)}</pre>
 				<span className="mr-3 overflow-hidden rounded-full h-11 w-11">
 					<Image
 						width={44}
