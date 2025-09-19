@@ -9,9 +9,8 @@ const bodySchema = z.object({
 	name: z.string().min(1),
 	lastName: z.string().min(1),
 	phone: z.string().min(6),
-	roleId: z.string().min(1),
 	ci: z.string().min(1),
-	password: z.string().min(8),
+	password: z.string().min(6),
 });
 
 export async function POST(req: Request) {
@@ -23,6 +22,7 @@ export async function POST(req: Request) {
 
 		const raw = await req.json();
 		const parsed = bodySchema.safeParse(raw);
+		console.log(parsed);
 		if (!parsed.success) {
 			return NextResponse.json(
 				{ error: "Datos inválidos", details: parsed.error.format() },
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 			);
 		}
 
-		const res = await fetch(`${API_URL}/api/v1/auth/register`, {
+		const res = await fetch(`${API_URL}/auth/register`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -51,6 +51,8 @@ export async function POST(req: Request) {
 		const body = contentType.includes("application/json")
 			? await res.json()
 			: await res.text();
+
+		console.log(body);
 
 		return NextResponse.json(body, { status: res.status });
 	} catch (err) {
