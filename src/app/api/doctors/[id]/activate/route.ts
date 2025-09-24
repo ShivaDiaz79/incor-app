@@ -1,0 +1,29 @@
+// app/api/doctors/[id]/activate/route.ts
+import { NextResponse } from "next/server";
+import { requireEnv, requireAuth, passThrough } from "@/lib/utils/api";
+
+export const runtime = "edge";
+
+// PATCH - Activate doctor
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const API_URL = requireEnv();
+    const auth = await requireAuth();
+    if (auth instanceof NextResponse) return auth;
+
+    const upstream = await fetch(`${API_URL}/doctors/${params.id}/activate`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${auth}` },
+    });
+
+    const { parsed } = await passThrough(upstream);
+
+    return NextResponse.json(parsed, { status: upstream.status });
+  } catch (err) {
+    console.error("Doctor activate error:", err);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
+}
