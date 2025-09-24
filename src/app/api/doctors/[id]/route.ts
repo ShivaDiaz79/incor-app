@@ -7,14 +7,14 @@ export const runtime = "edge";
 // GET - Get doctor by ID
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const upstream = await fetch(`${API_URL}/doctors/${params.id}`, {
+    const upstream = await fetch(`${API_URL}/doctors/${(await params).id}`, {
       headers: { Authorization: `Bearer ${auth}` },
     });
 
@@ -30,7 +30,7 @@ export async function GET(
 // PATCH - Update doctor
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
@@ -39,7 +39,7 @@ export async function PATCH(
 
     const body = await req.json();
 
-    const upstream = await fetch(`${API_URL}/doctors/${params.id}`, {
+    const upstream = await fetch(`${API_URL}/doctors/${(await params).id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -60,14 +60,14 @@ export async function PATCH(
 // DELETE - Deactivate doctor
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const upstream = await fetch(`${API_URL}/doctors/${params.id}`, {
+    const upstream = await fetch(`${API_URL}/doctors/${(await params).id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${auth}` },
     });

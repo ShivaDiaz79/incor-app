@@ -7,14 +7,14 @@ export const runtime = "edge";
 // GET - Search patient by CI
 export async function GET(
   req: Request,
-  { params }: { params: { ci: string } }
+  { params }: { params: Promise<{ ci: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { ci } = params;
+    const { ci } = await params;
 
     const upstream = await fetch(`${API_URL}/patients/search/ci/${ci}`, {
       headers: { Authorization: `Bearer ${auth}` },

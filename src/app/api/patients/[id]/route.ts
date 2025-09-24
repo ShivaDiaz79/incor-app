@@ -1,4 +1,3 @@
-// app/api/patients/[id]/route.ts
 import { NextResponse } from "next/server";
 import { requireEnv, requireAuth, passThrough } from "@/lib/utils/api";
 
@@ -7,14 +6,14 @@ export const runtime = "edge";
 // GET - Get patient by ID
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
 
     const upstream = await fetch(`${API_URL}/patients/${id}`, {
       headers: { Authorization: `Bearer ${auth}` },
@@ -32,14 +31,14 @@ export async function GET(
 // PATCH - Update patient
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const upstream = await fetch(`${API_URL}/patients/${id}`, {
@@ -63,14 +62,14 @@ export async function PATCH(
 // DELETE - Deactivate patient (soft delete)
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
 
     const upstream = await fetch(`${API_URL}/patients/${id}`, {
       method: "DELETE",

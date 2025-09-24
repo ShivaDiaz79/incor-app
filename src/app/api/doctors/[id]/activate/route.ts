@@ -7,17 +7,20 @@ export const runtime = "edge";
 // PATCH - Activate doctor
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const upstream = await fetch(`${API_URL}/doctors/${params.id}/activate`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${auth}` },
-    });
+    const upstream = await fetch(
+      `${API_URL}/doctors/${(await params).id}/activate`,
+      {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${auth}` },
+      }
+    );
 
     const { parsed } = await passThrough(upstream);
 
