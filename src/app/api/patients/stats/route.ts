@@ -1,23 +1,25 @@
+// app/api/patients/stats/route.ts
 import { NextResponse } from "next/server";
-import { passThrough, requireAuth, requireEnv } from "@/lib/utils/api";
+import { requireEnv, requireAuth, passThrough } from "@/lib/utils/api";
 
 export const runtime = "edge";
 
-export async function GET() {
-	try {
-		const API_URL = requireEnv();
-		const auth = await requireAuth();
-		if (auth instanceof NextResponse) return auth;
+// GET - Get patient statistics
+export async function GET(req: Request) {
+  try {
+    const API_URL = requireEnv();
+    const auth = await requireAuth();
+    if (auth instanceof NextResponse) return auth;
 
-		const upstream = await fetch(`${API_URL}/patients/stats`, {
-			headers: { Authorization: `Bearer ${auth}` },
-		});
+    const upstream = await fetch(`${API_URL}/patients/stats`, {
+      headers: { Authorization: `Bearer ${auth}` },
+    });
 
-		const { parsed } = await passThrough(upstream);
+    const { parsed } = await passThrough(upstream);
 
-		return NextResponse.json(parsed, { status: upstream.status });
-	} catch (err) {
-		console.error("Patients stats GET error:", err);
-		return NextResponse.json({ error: "Error interno" }, { status: 500 });
-	}
+    return NextResponse.json(parsed, { status: upstream.status });
+  } catch (err) {
+    console.error("Patient stats error:", err);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
 }
