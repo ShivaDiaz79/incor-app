@@ -7,14 +7,14 @@ export const runtime = "edge";
 // PATCH - Activate patient
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
 
     const upstream = await fetch(`${API_URL}/patients/${id}/activate`, {
       method: "PATCH",

@@ -5,14 +5,14 @@ export const runtime = "edge";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
 
     const upstream = await fetch(`${API_URL}/chatbot/prompts/${id}`, {
       headers: { Authorization: `Bearer ${auth}` },
@@ -29,14 +29,14 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const upstream = await fetch(`${API_URL}/chatbot/prompts/${id}`, {
@@ -59,14 +59,14 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const API_URL = requireEnv();
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
 
     const upstream = await fetch(`${API_URL}/chatbot/prompts/${id}`, {
       method: "DELETE",

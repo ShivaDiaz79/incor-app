@@ -276,7 +276,6 @@ const AssistantBot: React.FC<ChatbotProps> = ({
               disabled={loading}
               error={false}
               hint=""
-              onKeyDown={handleKeyDown}
             />
           </div>
           <div className="flex">
