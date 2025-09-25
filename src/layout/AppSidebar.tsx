@@ -13,6 +13,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   BriefcaseMedicalIcon,
+  Calendar,
 } from "lucide-react";
 
 type NavItem = {
@@ -48,6 +49,11 @@ const navItems: NavItem[] = [
     name: "Pacientes",
     icon: <Heart className="w-5 h-5" />,
     path: "/patients",
+  },
+  {
+    name: "Horarios",
+    icon: <Calendar className="w-5 h-5" />,
+    path: "/schedules",
   },
   {
     name: "Asistente",
