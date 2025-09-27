@@ -1,131 +1,138 @@
+// components/ui/Modal.tsx
 "use client";
-import React, { useRef, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+
+import { Fragment, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
-	isOpen: boolean;
-	onClose: () => void;
-	className?: string;
-	children: React.ReactNode;
-	showCloseButton?: boolean;
-	isFullscreen?: boolean;
-	autoCloseMs?: number;
-	disableManualClose?: boolean;
-	closeOnOverlay?: boolean;
-	closeOnEsc?: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  maxWidth?:
+    | "sm"
+    | "md"
+    | "lg"
+    | "xl"
+    | "2xl"
+    | "3xl"
+    | "4xl"
+    | "5xl"
+    | "6xl"
+    | "7xl";
+  preventClose?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({
-	isOpen,
-	onClose,
-	children,
-	className,
-	showCloseButton = true,
-	isFullscreen = false,
-	autoCloseMs,
-	disableManualClose = false,
-	closeOnOverlay = true,
-	closeOnEsc = true,
-}) => {
-	const modalRef = useRef<HTMLDivElement>(null);
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = "lg",
+  preventClose = false,
+}: ModalProps) {
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
 
-	const canManualClose = !disableManualClose;
-	const showX = showCloseButton && canManualClose;
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
-	useEffect(() => {
-		const handleEscape = (event: KeyboardEvent) => {
-			if (event.key === "Escape" && canManualClose && closeOnEsc) onClose();
-		};
-		if (isOpen) document.addEventListener("keydown", handleEscape);
-		return () => document.removeEventListener("keydown", handleEscape);
-	}, [isOpen, onClose, canManualClose, closeOnEsc]);
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !preventClose) {
+        onClose();
+      }
+    };
 
-	useEffect(() => {
-		document.body.style.overflow = isOpen ? "hidden" : "unset";
-		return () => {
-			document.body.style.overflow = "unset";
-		};
-	}, [isOpen]);
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+    }
 
-	useEffect(() => {
-		if (!isOpen || !autoCloseMs || autoCloseMs <= 0) return;
-		const t = window.setTimeout(() => onClose(), autoCloseMs);
-		return () => window.clearTimeout(t);
-	}, [isOpen, autoCloseMs, onClose]);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, onClose, preventClose]);
 
-	const contentClasses = isFullscreen
-		? "fixed inset-0 w-screen h-screen"
-		: [
-				"relative w-full",
-				"max-w-[80vw] max-h-[80vh]",
-				"overflow-auto",
-				"rounded-3xl bg-white dark:bg-gray-900",
-				"mx-auto",
-		  ].join(" ");
+  if (!isOpen) return null;
 
-	const overlayVariants = {
-		hidden: { opacity: 0 },
-		visible: { opacity: 1 },
-		exit: { opacity: 0 },
-	};
-	const panelVariants = {
-		hidden: { opacity: 0, y: 20, scale: 0.98 },
-		visible: { opacity: 1, y: 0, scale: 1 },
-		exit: { opacity: 0, y: 10, scale: 0.98 },
-	};
+  const maxWidthClasses = {
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-lg",
+    xl: "max-w-xl",
+    "2xl": "max-w-2xl",
+    "3xl": "max-w-3xl",
+    "4xl": "max-w-4xl",
+    "5xl": "max-w-5xl",
+    "6xl": "max-w-6xl",
+    "7xl": "max-w-7xl",
+  };
 
-	return (
-		<AnimatePresence>
-			{isOpen && (
-				<div
-					className="fixed inset-0 z-[2147483647] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
-					role="dialog"
-					aria-modal="true"
-				>
-					{!isFullscreen && (
-						<motion.div
-							className="fixed inset-0 z-[1] h-full w-full bg-gray-400/50 backdrop-blur-[24px]"
-							initial="hidden"
-							animate="visible"
-							exit="exit"
-							variants={overlayVariants}
-							transition={{ duration: 0.18, ease: "easeOut" }}
-							onClick={() => {
-								if (canManualClose && closeOnOverlay) onClose();
-							}}
-						/>
-					)}
+  const modalContent = (
+    <Fragment>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity"
+        onClick={preventClose ? undefined : onClose}
+        aria-hidden="true"
+      />
 
-					<motion.div
-						ref={modalRef}
-						className={`${contentClasses} z-[2] ${className || ""}`}
-						onClick={(e) => e.stopPropagation()}
-						initial="hidden"
-						animate="visible"
-						exit="exit"
-						variants={panelVariants}
-						transition={{ duration: 0.22, ease: "easeOut" }}
-					>
-						{showX && (
-							<button
-								onClick={onClose}
-								className="absolute right-3 top-3 z-10 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white sm:right-6 sm:top-6 sm:h-11 sm:w-11"
-								aria-label="Cerrar"
-							>
-								<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-									<path
-										fillRule="evenodd"
-										clipRule="evenodd"
-										d="M6.04289 16.5413C5.65237 16.9318 5.65237 17.565 6.04289 17.9555C6.43342 18.346 7.06658 18.346 7.45711 17.9555L11.9987 13.4139L16.5408 17.956C16.9313 18.3466 17.5645 18.3466 17.955 17.956C18.3455 17.5655 18.3455 16.9323 17.955 16.5418L13.4129 11.9997L17.955 7.4576C18.3455 7.06707 18.3455 6.43391 17.955 6.04338C17.5645 5.65286 16.9313 5.65286 16.5408 6.04338L11.9987 10.5855L7.45711 6.0439C7.06658 5.65338 6.43342 5.65338 6.04289 6.0439C5.65237 6.43442 5.65237 7.06759 6.04289 7.45811L10.5845 11.9997L6.04289 16.5413Z"
-										fill="currentColor"
-									/>
-								</svg>
-							</button>
-						)}
-						<div className={isFullscreen ? "" : "p-0"}>{children}</div>
-					</motion.div>
-				</div>
-			)}
-		</AnimatePresence>
-	);
-};
+      {/* Modal Container */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="relative flex h-full w-full items-center justify-center">
+          {/* Modal Content */}
+          <div
+            className={`relative w-full ${maxWidthClasses[maxWidth]} max-h-[calc(100vh-2rem)] overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-gray-900`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {title}
+              </h2>
+              {!preventClose && (
+                <button
+                  onClick={onClose}
+                  className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                  aria-label="Cerrar modal"
+                >
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6">
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Fragment>
+  );
+
+  // Render in portal to avoid z-index issues
+  return typeof window !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : null;
+}
