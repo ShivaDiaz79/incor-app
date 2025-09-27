@@ -14,6 +14,8 @@ import {
   MoreHorizontal,
   BriefcaseMedicalIcon,
   Calendar,
+  Badge,
+  HatGlasses,
 } from "lucide-react";
 
 type NavItem = {
@@ -49,6 +51,16 @@ const navItems: NavItem[] = [
     name: "Pacientes",
     icon: <Heart className="w-5 h-5" />,
     path: "/patients",
+  },
+  {
+    name: "Historial Médico",
+    icon: <Badge className="w-5 h-5" />,
+    path: "/medical-history",
+  },
+  {
+    name: "Roles",
+    icon: <HatGlasses className="w-5 h-5" />,
+    path: "/roles",
   },
   {
     name: "Horarios",
